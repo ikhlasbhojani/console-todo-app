@@ -1,0 +1,20 @@
+[project]
+name = "console-todo-app"
+version = "0.1.0"
+description = "A console-based todo application with SQLite persistence"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "ruff>=0.14.8",
+]
