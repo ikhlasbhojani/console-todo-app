@@ -28,11 +28,13 @@ curl -fsSL https://raw.githubusercontent.com/ikhlasbhojani/console-todo-app/main
 irm https://raw.githubusercontent.com/ikhlasbhojani/console-todo-app/main/scripts/install.ps1 | iex
 ```
 
-The installer will automatically:
-1. Check for Python 3.13+
-2. Install `uv` package manager (if needed)
-3. Install the todo-app globally
-4. Configure your PATH
+**That's it!** The installer automatically handles everything:
+- Installs `uv` package manager
+- Downloads Python 3.13 (managed by uv)
+- Installs todo-app globally
+- Configures your PATH
+
+No need to install Python or anything else first!
 
 ## Quick Start
 
@@ -163,9 +165,9 @@ source ~/.bashrc  # or ~/.zshrc
 # Windows - restart PowerShell
 ```
 
-### "Python 3.13+ required"
+### Python version issues
 
-Install Python 3.13 or higher from [python.org](https://python.org/downloads/)
+The installer uses `uv` to automatically manage Python 3.13. If you encounter issues, ensure `uv` is installed and try again.
 
 ### Uninstall
 
@@ -177,8 +179,8 @@ uv tool uninstall console-todo-app
 
 ## Requirements
 
-- Python 3.13 or higher
 - Internet connection (for installation only)
+- Everything else is installed automatically!
 
 ## License
 

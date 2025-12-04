@@ -1,5 +1,10 @@
 # One-command global installation script for TODO APP (Windows PowerShell)
 # Usage: irm https://raw.githubusercontent.com/ikhlasbhojani/console-todo-app/main/scripts/install.ps1 | iex
+#
+# This script installs EVERYTHING automatically:
+# 1. uv package manager
+# 2. Python 3.13 (managed by uv)
+# 3. todo-app globally
 
 # Ensure script stops on errors
 $ErrorActionPreference = "Stop"
@@ -49,88 +54,37 @@ Write-Host ("=" * 46) -ForegroundColor Cyan -NoNewline
 Write-Host ([char]0x255D) -ForegroundColor Cyan
 Write-Host ""
 
-# Note about execution policy
-if ((Get-ExecutionPolicy) -eq "Restricted") {
-    Write-WarningMsg "PowerShell execution policy is set to 'Restricted'"
-    Write-Host "You may need to run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
-    Write-Host ""
-}
-
-# Step 1: Check Python version (3.13+)
-Write-Step "Checking Python installation..."
+# Step 1: Install uv package manager (it will manage Python for us)
+Write-Step "Installing uv package manager..."
 
 try {
-    $pythonCmd = Get-Command python -ErrorAction Stop
-    $pythonVersion = (python --version 2>&1) -replace 'Python ', ''
-    Write-InfoMsg "Found Python $pythonVersion"
+    # Always install/update uv
+    Write-InfoMsg "Downloading uv..."
+    Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
 
-    # Parse version
-    $versionParts = $pythonVersion.Split('.')
-    $majorVersion = [int]$versionParts[0]
-    $minorVersion = [int]$versionParts[1]
+    # Refresh environment variables
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-    if ($majorVersion -lt 3 -or ($majorVersion -eq 3 -and $minorVersion -lt 13)) {
-        Write-ErrorMsg "Python 3.13 or higher is required (found $pythonVersion)"
-        Write-Host ""
-        Write-Host "Please upgrade Python from:"
-        Write-Host "  https://www.python.org/downloads/"
-        exit 1
-    }
+    # Add common install locations
+    $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
+    $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
 
-    Write-SuccessMsg "Python version check passed"
+    # Verify installation
+    $uvCmd = Get-Command uv -ErrorAction Stop
+    $uvVersion = (uv --version 2>&1) | Select-Object -First 1
+    Write-SuccessMsg "uv installed ($uvVersion)"
 }
 catch {
-    Write-ErrorMsg "Python is not installed or not in PATH"
+    Write-ErrorMsg "Failed to install uv"
     Write-Host ""
-    Write-Host "Please install Python 3.13 or higher from:"
-    Write-Host "  https://www.python.org/downloads/"
-    Write-Host ""
-    Write-Host "Make sure to check 'Add Python to PATH' during installation"
+    Write-Host "Please try running this command manually:"
+    Write-Host "  irm https://astral.sh/uv/install.ps1 | iex"
     exit 1
 }
 
-# Step 2: Check/Install uv package manager
-Write-Step "Checking uv package manager..."
-
-try {
-    $uvCmd = Get-Command uv -ErrorAction Stop
-    $uvVersion = (uv --version 2>&1) | Select-Object -First 1
-    Write-InfoMsg "Found $uvVersion"
-    Write-SuccessMsg "uv package manager check passed"
-}
-catch {
-    Write-WarningMsg "uv is not installed. Installing uv automatically..."
-    Write-Host ""
-
-    try {
-        # Install uv using PowerShell method
-        Write-InfoMsg "Downloading and installing uv..."
-        Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
-
-        # Refresh environment variables
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-        # Also add common install locations
-        $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
-        $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-
-        # Verify installation
-        $uvCmd = Get-Command uv -ErrorAction Stop
-        Write-SuccessMsg "uv installed successfully"
-    }
-    catch {
-        Write-ErrorMsg "Failed to install uv automatically"
-        Write-Host ""
-        Write-Host "Please install uv manually:"
-        Write-Host "  irm https://astral.sh/uv/install.ps1 | iex"
-        Write-Host ""
-        Write-Host "Or visit: https://docs.astral.sh/uv/getting-started/installation/"
-        exit 1
-    }
-}
-
-# Step 3: Install todo-app globally using uv tool
-Write-Step "Installing todo-app globally..."
+# Step 2: Install todo-app globally
+# uv will automatically download Python 3.13 if needed - no separate Python installation required!
+Write-Step "Installing todo-app..."
 
 $githubUrl = "git+https://github.com/ikhlasbhojani/console-todo-app.git"
 
@@ -139,13 +93,17 @@ try {
     uv tool uninstall console-todo-app 2>$null
 } catch {}
 
-# Install globally using uv tool
+Write-InfoMsg "Downloading Python 3.13 and todo-app (this may take a moment)..."
+Write-Host ""
+
+# Install globally using uv tool with Python version specification
+# uv automatically downloads Python 3.13 - user doesn't need Python installed!
 try {
-    uv tool install $githubUrl
+    uv tool install --python 3.13 $githubUrl
     if ($LASTEXITCODE -ne 0) {
         throw "uv tool install failed with exit code $LASTEXITCODE"
     }
-    Write-SuccessMsg "todo-app installed globally"
+    Write-SuccessMsg "todo-app installed successfully"
 }
 catch {
     Write-ErrorMsg "Failed to install todo-app"
@@ -155,7 +113,7 @@ catch {
     exit 1
 }
 
-# Step 4: Verify installation
+# Step 3: Verify installation
 Write-Step "Verifying installation..."
 
 # Refresh PATH
@@ -165,17 +123,16 @@ $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 # Check if todo-app is available
 try {
     $todoCmd = Get-Command todo-app -ErrorAction Stop
-    Write-SuccessMsg "todo-app command is available"
+    Write-SuccessMsg "todo-app command is ready"
 }
 catch {
-    Write-WarningMsg "todo-app may not be in your PATH yet"
+    Write-WarningMsg "todo-app installed but not in PATH yet"
     Write-Host ""
-    Write-InfoMsg "You may need to restart PowerShell or add to your PATH:"
+    Write-Host "  Add this to your PowerShell profile:"
     Write-Host ""
-    Write-Host "  Add to your PowerShell profile:"
     Write-Host '    $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"'
     Write-Host ""
-    Write-Host "  Or restart your terminal"
+    Write-Host "  Or simply restart your terminal."
 }
 
 # Success message
@@ -191,17 +148,25 @@ Write-Host ("=" * 46) -ForegroundColor Green -NoNewline
 Write-Host ([char]0x255D) -ForegroundColor Green
 Write-Host ""
 
-Write-SuccessMsg "Python $pythonVersion"
-Write-SuccessMsg "uv package manager installed"
-Write-SuccessMsg "todo-app installed globally"
+Write-SuccessMsg "uv package manager"
+Write-SuccessMsg "Python 3.13 (managed by uv)"
+Write-SuccessMsg "todo-app"
 
 Write-Host ""
-Write-Host "To start using the app:" -ForegroundColor White
+Write-Host "To start using the app, run:" -ForegroundColor White
 Write-Host ""
 Write-Host "  todo-app" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Your tasks will be stored in:" -ForegroundColor White
 Write-Host "  $env:USERPROFILE\.todo-app\todo.db"
 Write-Host ""
-Write-InfoMsg "For help, type 'help' inside the app"
+Write-InfoMsg "Type 'help' inside the app for commands"
 Write-Host ""
+
+# Hint about restart if needed
+try {
+    Get-Command todo-app -ErrorAction Stop | Out-Null
+} catch {
+    Write-Host "Note: You may need to restart your terminal first." -ForegroundColor Yellow
+    Write-Host ""
+}
