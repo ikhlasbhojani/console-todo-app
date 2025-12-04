@@ -205,11 +205,11 @@ def handle_delete(manager: TodoManager) -> None:
 def main() -> None:
     """Main CLI loop for the TODO application.
 
-    Displays startup banner, initializes TodoManager,
+    Displays startup hero section, initializes TodoManager,
     and processes user commands in an infinite loop.
     """
-    # Display startup banner
-    theme.print_banner()
+    # Display hero section (clears terminal and shows colorful heading)
+    theme.print_hero()
 
     # Initialize TodoManager (uses ~/.todo-app/todo.db by default)
     manager = TodoManager()

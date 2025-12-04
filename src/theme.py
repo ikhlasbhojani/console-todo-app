@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 from rich.theme import Theme
 
 if TYPE_CHECKING:
@@ -270,3 +271,212 @@ def print_goodbye() -> None:
         console.print("\n[info]Goodbye![/info] 👋")
     else:
         console.print("\n[info]Goodbye![/info]")
+
+
+# =============================================================================
+# HERO SECTION - Terminal Hero Section (Feature 003)
+# =============================================================================
+
+# Hero section constants
+HERO_VERSION = "v1.0.0"
+HERO_TAGLINE = "Manage your tasks with style"
+HERO_HELP_HINT = "Type 'help' for commands"
+
+# Gradient colors for ASCII art (top to bottom)
+HERO_GRADIENT_COLORS = [
+    "bright_cyan",
+    "cyan",
+    "blue",
+    "magenta",
+    "bright_magenta",
+]
+
+# Full ASCII art for wide terminals (60+ chars)
+HERO_ART_FULL = """\
+████████╗ ██████╗ ██████╗  ██████╗
+╚══██╔══╝██╔═══██╗██╔══██╗██╔═══██╗
+   ██║   ██║   ██║██║  ██║██║   ██║
+   ██║   ╚██████╔╝██████╔╝╚██████╔╝
+   ╚═╝    ╚═════╝ ╚═════╝  ╚═════╝\
+"""
+
+# Compact ASCII art for narrow terminals (40-59 chars)
+HERO_ART_COMPACT = """\
+╔════════════════════════╗
+║   ■ T O D O  A P P ■   ║
+╚════════════════════════╝\
+"""
+
+# Text-only fallback for very narrow terminals (<40 chars)
+HERO_ART_TEXT = "=== TODO APP ==="
+
+# ASCII fallback art (no Unicode)
+HERO_ART_ASCII = """\
+######## ####### ######  #######
+   ##    ##   ## ##   ## ##   ##
+   ##    ##   ## ##   ## ##   ##
+   ##    ####### ######  #######
+   ##    ####### ######  #######\
+"""
+
+
+def clear_terminal() -> None:
+    """Clear the terminal screen.
+
+    Uses Rich Console.clear() for cross-platform compatibility.
+    This ensures the app starts at the top of a clean screen.
+    """
+    console = get_console()
+    console.clear()
+
+
+def _get_art_mode(terminal_width: int) -> str:
+    """Determine which ASCII art mode to use based on terminal width.
+
+    Args:
+        terminal_width: Current terminal width in characters.
+
+    Returns:
+        "full" for wide terminals (60+),
+        "compact" for medium terminals (40-59),
+        "text" for narrow terminals (<40).
+    """
+    if terminal_width >= 60:
+        return "full"
+    elif terminal_width >= 40:
+        return "compact"
+    else:
+        return "text"
+
+
+def _get_ascii_art(mode: str) -> str:
+    """Get ASCII art for the specified mode.
+
+    Args:
+        mode: "full", "compact", or "text"
+
+    Returns:
+        ASCII art string appropriate for the terminal.
+    """
+    if not supports_unicode():
+        # Use ASCII fallback if Unicode not supported
+        if mode == "full":
+            return HERO_ART_ASCII
+        elif mode == "compact":
+            return (
+                "+------------------------+\n"
+                "|   * T O D O  A P P *   |\n"
+                "+------------------------+"
+            )
+        else:
+            return HERO_ART_TEXT
+
+    if mode == "full":
+        return HERO_ART_FULL
+    elif mode == "compact":
+        return HERO_ART_COMPACT
+    else:
+        return HERO_ART_TEXT
+
+
+def _apply_gradient(text: str, colors: list[str]) -> Text:
+    """Apply gradient colors to multi-line text.
+
+    Args:
+        text: Multi-line ASCII art string.
+        colors: List of Rich color names to apply as gradient.
+
+    Returns:
+        Rich Text object with gradient colors applied line by line.
+    """
+    lines = text.split("\n")
+    styled_text = Text()
+
+    for i, line in enumerate(lines):
+        # Cycle through colors for each line
+        color = colors[i % len(colors)]
+        styled_text.append(line, style=color)
+        if i < len(lines) - 1:
+            styled_text.append("\n")
+
+    return styled_text
+
+
+def _print_hero_heading(console: Console, mode: str) -> None:
+    """Print the hero heading with gradient colors.
+
+    Args:
+        console: Rich Console instance.
+        mode: Art mode ("full", "compact", or "text").
+    """
+    art = _get_ascii_art(mode)
+
+    if supports_color():
+        styled_art = _apply_gradient(art, HERO_GRADIENT_COLORS)
+        console.print(styled_art)
+    else:
+        # No colors - print plain
+        console.print(art)
+
+
+def _print_hero_tagline(console: Console) -> None:
+    """Print the hero tagline with dim styling.
+
+    Args:
+        console: Rich Console instance.
+    """
+    console.print()  # Blank line after heading
+    console.print(f"[dim]       {HERO_TAGLINE}[/dim]")
+
+
+def _print_hero_meta(console: Console) -> None:
+    """Print version and help hint with dim cyan styling.
+
+    Args:
+        console: Rich Console instance.
+    """
+    console.print()  # Blank line after tagline
+    separator = "·" if supports_unicode() else "-"
+    console.print(f"[dim cyan]   {HERO_VERSION} {separator} {HERO_HELP_HINT}[/dim cyan]")
+
+
+def _print_hero_separator(console: Console) -> None:
+    """Print a separator line before the command prompt.
+
+    Args:
+        console: Rich Console instance.
+    """
+    console.print()  # Blank line after meta
+    width = min(console.width, 40)
+    separator_char = "─" if supports_unicode() else "-"
+    console.print(f"[dim]{separator_char * width}[/dim]")
+    console.print()  # Blank line before prompt
+
+
+def print_hero() -> None:
+    """Display the complete hero section.
+
+    This function:
+    1. Clears the terminal for a clean slate
+    2. Detects terminal width and selects appropriate ASCII art
+    3. Displays colorful gradient heading
+    4. Shows tagline, version, and help hint
+    5. Adds separator before command prompt
+
+    The hero section transforms the app's startup experience
+    with an impressive, modern visual design.
+    """
+    console = get_console()
+
+    # Clear terminal for clean slate
+    clear_terminal()
+
+    # Detect terminal width and get appropriate art mode
+    width = console.width
+    mode = _get_art_mode(width)
+
+    # Display hero components
+    _print_hero_heading(console, mode)
+    _print_hero_tagline(console)
+    _print_hero_meta(console)
+    _print_hero_separator(console)
