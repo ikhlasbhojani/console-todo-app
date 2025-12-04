@@ -11,6 +11,19 @@ from pathlib import Path
 from src.models import Task
 
 
+def get_default_db_path() -> str:
+    """Get the default database path for global installation.
+
+    Returns:
+        Path to ~/.todo-app/todo.db for global installs,
+        or data/todo.db for local development.
+    """
+    # Use ~/.todo-app/todo.db for global installation
+    home = Path.home()
+    todo_app_dir = home / ".todo-app"
+    return str(todo_app_dir / "todo.db")
+
+
 class TodoManager:
     """Manages todo tasks with SQLite persistence.
 
@@ -22,7 +35,7 @@ class TodoManager:
         db_path: Path to the SQLite database file.
     """
 
-    def __init__(self, db_path: str = "data/todo.db") -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         """Initialize the TodoManager.
 
         Creates parent directories and database if they don't exist,
@@ -31,12 +44,14 @@ class TodoManager:
         Args:
             db_path: Path to SQLite database file. Creates parent
                      directories and database if they don't exist.
-                     Defaults to "data/todo.db".
+                     Defaults to ~/.todo-app/todo.db for global installation.
 
         Example:
             >>> manager = TodoManager()
-            >>> manager = TodoManager("data/test.db")
+            >>> manager = TodoManager("/path/to/test.db")
         """
+        if db_path is None:
+            db_path = get_default_db_path()
         self.db_path = db_path
 
         # Create parent directories if they don't exist

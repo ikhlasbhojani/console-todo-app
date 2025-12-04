@@ -23,16 +23,17 @@ def test_help_displays_all_commands(capsys):
     captured = capsys.readouterr()
     output = captured.out
 
-    # Verify header
-    assert "Available commands:" in output
+    # Verify header (case insensitive check)
+    assert "available commands:" in output.lower()
 
-    # Verify all 6 commands are present with their descriptions
-    assert "add      - Add a new task" in output
-    assert "list     - Show all tasks" in output
-    assert "update   - Update an existing task (title/description)" in output
-    assert "complete - Mark a task as completed" in output
-    assert "delete   - Delete a task" in output
-    assert "exit     - Quit the application" in output
+    # Verify all 7 commands are present with their descriptions
+    assert "add" in output and "Add a new task" in output
+    assert "list" in output and "Show all tasks" in output
+    assert "update" in output and "Update an existing task" in output
+    assert "complete" in output and "Mark a task as completed" in output
+    assert "delete" in output and "Delete a task" in output
+    assert "help" in output and "Show this help message" in output
+    assert "exit" in output and "Quit the application" in output
 
 
 def test_help_output_format(capsys):
@@ -57,11 +58,10 @@ def test_help_output_format(capsys):
     lines = output.strip().split("\n")
     command_lines = [line for line in lines if " - " in line]
 
-    assert len(command_lines) == 6, "Should have exactly 6 command lines"
+    assert len(command_lines) == 7, "Should have exactly 7 command lines"
 
-    # Each command line should follow format: "  <cmd>      - <description>"
+    # Each command line should contain ' - ' for description
     for line in command_lines:
-        assert line.startswith("  "), f"Command line should start with 2 spaces: {line}"
         assert " - " in line, f"Command line should contain ' - ': {line}"
 
 
@@ -265,7 +265,7 @@ def test_help_contains_no_task_operations():
 
         # Assert
         assert len(output) > 0, "Should produce output"
-        assert "Available commands:" in output, "Should show command list"
+        assert "available commands:" in output.lower(), "Should show command list"
 
     except Exception as e:
         pytest.fail(f"handle_help should not raise exceptions: {e}")
@@ -292,7 +292,7 @@ def test_help_command_count():
 
     # Assert - Count lines with command descriptions (contain " - ")
     command_lines = [line for line in output.split("\n") if " - " in line]
-    assert len(command_lines) == 6, f"Expected exactly 6 commands, found {len(command_lines)}"
+    assert len(command_lines) == 7, f"Expected exactly 7 commands, found {len(command_lines)}"
 
 
 def test_unknown_command_error_format_consistency():

@@ -1,20 +1,12 @@
-"""Main CLI application for TODO APP - SQLITE.
+"""Main CLI application for TODO APP.
 
 This module provides the main command loop and command handlers
-for the interactive console-based todo application.
+for the interactive console-based todo application with rich styling.
 """
 
+from src import theme
 from src.todo_manager import TodoManager
-from src.utils import format_task_table, validate_task_id, validate_title
-
-
-def print_banner() -> None:
-    """Display the startup banner."""
-    print("====================================")
-    print("      TODO APP - SQLITE (PHASE 1)")
-    print("====================================")
-    print("Type 'help' to see available commands.")
-    print()
+from src.utils import validate_task_id, validate_title
 
 
 def handle_help() -> None:
@@ -22,15 +14,17 @@ def handle_help() -> None:
 
     Displays list of available commands with descriptions.
     """
-    print()
-    print("Available commands:")
-    print("  add      - Add a new task")
-    print("  list     - Show all tasks")
-    print("  update   - Update an existing task (title/description)")
-    print("  complete - Mark a task as completed")
-    print("  delete   - Delete a task")
-    print("  exit     - Quit the application")
-    print()
+    console = theme.get_console()
+    console.print()
+    console.print("[header]Available Commands:[/header]")
+    console.print("  [info]add[/info]      - Add a new task")
+    console.print("  [info]list[/info]     - Show all tasks")
+    console.print("  [info]update[/info]   - Update an existing task (title/description)")
+    console.print("  [info]complete[/info] - Mark a task as completed")
+    console.print("  [info]delete[/info]   - Delete a task")
+    console.print("  [info]help[/info]     - Show this help message")
+    console.print("  [info]exit[/info]     - Quit the application")
+    console.print()
 
 
 def handle_add(manager: TodoManager) -> None:
@@ -50,7 +44,7 @@ def handle_add(manager: TodoManager) -> None:
             break
         else:
             # result is the error message
-            print(result)
+            theme.print_error(result)
 
     # Prompt for description (no validation, can be empty)
     description = input("Enter description: ")
@@ -58,13 +52,13 @@ def handle_add(manager: TodoManager) -> None:
     # Create task
     try:
         task = manager.add_task(valid_title, description)
-        print()
-        print(f"[OK] Task created with ID: {task.id}")
-        print()
+        theme.get_console().print()
+        theme.print_success(f"Task created with ID: {task.id}")
+        theme.get_console().print()
     except ValueError as e:
-        print()
-        print(f"[ERROR] {e}")
-        print()
+        theme.get_console().print()
+        theme.print_error(str(e))
+        theme.get_console().print()
 
 
 def handle_list(manager: TodoManager) -> None:
@@ -74,13 +68,9 @@ def handle_list(manager: TodoManager) -> None:
     """
     tasks = manager.list_tasks()
 
-    print()
-    if not tasks:
-        print("No tasks found.")
-    else:
-        table = format_task_table(tasks)
-        print(table)
-    print()
+    theme.get_console().print()
+    theme.print_task_table(tasks)
+    theme.get_console().print()
 
 
 def handle_update(manager: TodoManager) -> None:
@@ -97,9 +87,9 @@ def handle_update(manager: TodoManager) -> None:
 
     if not is_valid:
         # result is the error message
-        print()
-        print(result)
-        print()
+        theme.get_console().print()
+        theme.print_error(result)
+        theme.get_console().print()
         return
 
     # result is the valid task_id integer
@@ -120,18 +110,18 @@ def handle_update(manager: TodoManager) -> None:
         success = manager.update_task(task_id, title=new_title, description=new_description)
 
         # Display result
-        print()
+        theme.get_console().print()
         if success:
-            print(f"[OK] Task {task_id} updated.")
+            theme.print_success(f"Task {task_id} updated.")
         else:
-            print("[ERROR] Task not found")
-        print()
+            theme.print_error("Task not found")
+        theme.get_console().print()
 
     except ValueError as e:
         # Handle validation errors (e.g., empty title)
-        print()
-        print(f"[ERROR] {e}")
-        print()
+        theme.get_console().print()
+        theme.print_error(str(e))
+        theme.get_console().print()
 
 
 def handle_complete(manager: TodoManager) -> None:
@@ -148,9 +138,9 @@ def handle_complete(manager: TodoManager) -> None:
 
     if not is_valid:
         # result is the error message
-        print()
-        print(result)
-        print()
+        theme.get_console().print()
+        theme.print_error(result)
+        theme.get_console().print()
         return
 
     # result is the valid task_id integer
@@ -159,10 +149,15 @@ def handle_complete(manager: TodoManager) -> None:
     # Complete the task
     success, message = manager.complete_task(task_id)
 
-    # Display result
-    print()
-    print(message)
-    print()
+    # Display result with appropriate styling
+    theme.get_console().print()
+    if success:
+        theme.print_success(f"Task {task_id} marked as completed.")
+    elif "already" in message.lower():
+        theme.print_warning(message)
+    else:
+        theme.print_error(message.replace("[ERROR] ", "").replace("[OK] ", ""))
+    theme.get_console().print()
 
 
 def handle_delete(manager: TodoManager) -> None:
@@ -179,9 +174,9 @@ def handle_delete(manager: TodoManager) -> None:
 
     if not is_valid:
         # result is the error message
-        print()
-        print(result)
-        print()
+        theme.get_console().print()
+        theme.print_error(result)
+        theme.get_console().print()
         return
 
     # result is the valid task_id integer
@@ -199,12 +194,12 @@ def handle_delete(manager: TodoManager) -> None:
     success = manager.delete_task(task_id)
 
     # Display result
-    print()
+    theme.get_console().print()
     if success:
-        print(f"[OK] Task {task_id} deleted.")
+        theme.print_success(f"Task {task_id} deleted.")
     else:
-        print("[ERROR] Task not found")
-    print()
+        theme.print_error("Task not found")
+    theme.get_console().print()
 
 
 def main() -> None:
@@ -214,16 +209,21 @@ def main() -> None:
     and processes user commands in an infinite loop.
     """
     # Display startup banner
-    print_banner()
+    theme.print_banner()
 
-    # Initialize TodoManager
+    # Initialize TodoManager (uses ~/.todo-app/todo.db by default)
     manager = TodoManager()
+
+    # Get console for styled prompt
+    console = theme.get_console()
 
     # Main command loop
     while True:
         try:
-            # Display prompt and get user input
-            command = input("> ").strip().lower()
+            # Display styled prompt and get user input
+            prompt_str = theme.get_prompt()
+            console.print(prompt_str, end="")
+            command = input().strip().lower()
 
             # Skip empty commands
             if not command:
@@ -243,24 +243,21 @@ def main() -> None:
             elif command == "help":
                 handle_help()
             elif command == "exit":
-                print()
-                print("Goodbye!")
+                theme.print_goodbye()
                 break
             else:
                 # Unknown command
-                print()
-                print(f"[ERROR] Unknown command: '{command}'. Type 'help' to see commands.")
-                print()
+                theme.get_console().print()
+                theme.print_error(f"Unknown command: '{command}'. Type 'help' to see commands.")
+                theme.get_console().print()
 
         except KeyboardInterrupt:
             # Handle Ctrl+C gracefully
-            print()
-            print("Goodbye!")
+            theme.print_goodbye()
             break
         except EOFError:
             # Handle Ctrl+D gracefully
-            print()
-            print("Goodbye!")
+            theme.print_goodbye()
             break
 
 
