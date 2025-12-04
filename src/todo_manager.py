@@ -5,10 +5,10 @@ interactions for task management.
 """
 
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
-from src.models import Task
+from src.models import Task, TaskStats
 
 
 def get_default_db_path() -> str:
@@ -61,6 +61,9 @@ class TodoManager:
         # Initialize database and create table if needed
         self._init_db()
 
+        # Ensure Phase 2 columns exist (migration)
+        self._ensure_columns_exist()
+
     def _get_connection(self) -> sqlite3.Connection:
         """Get a database connection with row factory configured.
 
@@ -110,14 +113,52 @@ class TodoManager:
                 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)
             """)
 
+            # Create projects table for Phase 2
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    description TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
             conn.commit()
 
-    def add_task(self, title: str, description: str = "") -> Task:
+    def _ensure_columns_exist(self) -> None:
+        """Ensure Phase 2 columns exist in tasks table.
+
+        Uses PRAGMA table_info to check for columns and adds them if missing.
+        This is a safe migration that preserves existing data.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(tasks)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            # Add due_date column if missing
+            if "due_date" not in columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
+
+            # Add project_id column if missing
+            if "project_id" not in columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN project_id INTEGER")
+
+            conn.commit()
+
+    def add_task(
+        self,
+        title: str,
+        description: str = "",
+        due_date: date | None = None,
+        project_id: int | None = None,
+    ) -> Task:
         """Create a new task.
 
         Args:
             title: Task title (required, non-empty after strip)
             description: Optional task description (default: empty string)
+            due_date: Optional due date for the task
+            project_id: Optional project ID to assign task to
 
         Returns:
             The newly created Task with generated ID and timestamps.
@@ -140,14 +181,28 @@ class TodoManager:
         created_at = now.isoformat()
         updated_at = now.isoformat()
 
+        # Format due_date for storage
+        due_date_str = due_date.isoformat() if due_date else None
+
         # Insert task into database
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO tasks (title, description, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO tasks (
+                    title, description, status, created_at, updated_at,
+                    due_date, project_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (stripped_title, description, "pending", created_at, updated_at),
+                (
+                    stripped_title,
+                    description,
+                    "pending",
+                    created_at,
+                    updated_at,
+                    due_date_str,
+                    project_id,
+                ),
             )
             task_id = cursor.lastrowid
             conn.commit()
@@ -160,6 +215,8 @@ class TodoManager:
             status="pending",
             created_at=now,
             updated_at=now,
+            due_date=due_date,
+            project_id=project_id,
         )
 
     def list_tasks(self) -> list[Task]:
@@ -176,7 +233,7 @@ class TodoManager:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT id, title, description, status, created_at, updated_at
+                SELECT id, title, description, status, created_at, updated_at, due_date, project_id
                 FROM tasks
                 ORDER BY id ASC
                 """
@@ -205,7 +262,7 @@ class TodoManager:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT id, title, description, status, created_at, updated_at
+                SELECT id, title, description, status, created_at, updated_at, due_date, project_id
                 FROM tasks
                 WHERE id = ?
                 """,
@@ -376,3 +433,123 @@ class TodoManager:
             conn.commit()
 
         return True
+
+    # =========================================================================
+    # Phase 2: Filter Methods for Due Dates
+    # =========================================================================
+
+    def list_tasks_today(self) -> list[Task]:
+        """Retrieve all tasks due today.
+
+        Returns:
+            List of Task objects due on the current date.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, title, description, status, created_at, updated_at, due_date, project_id
+                FROM tasks
+                WHERE due_date = DATE('now', 'localtime')
+                ORDER BY id ASC
+                """
+            )
+            rows = cursor.fetchall()
+
+        return [Task.from_row(row) for row in rows]
+
+    def list_tasks_overdue(self) -> list[Task]:
+        """Retrieve all overdue pending tasks.
+
+        Returns:
+            List of pending Task objects with past due dates.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, title, description, status, created_at, updated_at, due_date, project_id
+                FROM tasks
+                WHERE due_date < DATE('now', 'localtime') AND status = 'pending'
+                ORDER BY due_date ASC, id ASC
+                """
+            )
+            rows = cursor.fetchall()
+
+        return [Task.from_row(row) for row in rows]
+
+    def list_tasks_upcoming(self) -> list[Task]:
+        """Retrieve all tasks due within the next 7 days.
+
+        Returns:
+            List of Task objects due within the next 7 days (including today).
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT
+                    id, title, description, status, created_at, updated_at,
+                    due_date, project_id
+                FROM tasks
+                WHERE due_date BETWEEN DATE('now', 'localtime')
+                    AND DATE('now', 'localtime', '+7 days')
+                ORDER BY due_date ASC, id ASC
+                """
+            )
+            rows = cursor.fetchall()
+
+        return [Task.from_row(row) for row in rows]
+
+    def list_tasks_by_project(self, project_id: int) -> list[Task]:
+        """Retrieve all tasks in a specific project.
+
+        Args:
+            project_id: The project ID to filter by.
+
+        Returns:
+            List of Task objects in the specified project.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, title, description, status, created_at, updated_at, due_date, project_id
+                FROM tasks
+                WHERE project_id = ?
+                ORDER BY id ASC
+                """,
+                (project_id,),
+            )
+            rows = cursor.fetchall()
+
+        return [Task.from_row(row) for row in rows]
+
+    def get_stats(self) -> TaskStats:
+        """Get task statistics.
+
+        Returns:
+            TaskStats object with all metrics calculated.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END)
+                        as pending,
+                    SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END)
+                        as completed,
+                    SUM(CASE WHEN due_date = DATE('now', 'localtime')
+                        THEN 1 ELSE 0 END) as due_today,
+                    SUM(CASE WHEN due_date < DATE('now', 'localtime')
+                        AND status = 'pending' THEN 1 ELSE 0 END)
+                        as overdue
+                FROM tasks
+                """
+            )
+            row = cursor.fetchone()
+
+        return TaskStats(
+            total=row["total"] or 0,
+            pending=row["pending"] or 0,
+            completed=row["completed"] or 0,
+            due_today=row["due_today"] or 0,
+            overdue=row["overdue"] or 0,
+        )

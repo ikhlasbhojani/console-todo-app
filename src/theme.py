@@ -207,16 +207,20 @@ def print_banner() -> None:
     console.print("Type [info]'help'[/info] for available commands.\n")
 
 
-def print_task_table(tasks: list) -> None:
+def print_task_table(tasks: list, show_project: bool = True, project_manager=None) -> None:
     """Display tasks in a styled table.
 
     Args:
         tasks: List of Task objects to display.
+        show_project: Whether to display the Project column (default: True).
+        project_manager: ProjectManager instance for looking up project names (optional).
 
     Output:
         - Styled table with borders
         - Colored header row (blue)
         - Status column with icons and colors
+        - Due Date column with formatted dates
+        - Project column with project names (if show_project=True)
         - Truncated titles if too long
 
     Note:
@@ -239,15 +243,136 @@ def print_task_table(tasks: list) -> None:
     table.add_column("ID", justify="right", style="dim", width=4)
     table.add_column("Title", justify="left", width=20, overflow="ellipsis")
     table.add_column("Status", justify="center", width=12)
+    table.add_column("Due Date", justify="left", width=10)
+    if show_project:
+        table.add_column("Project", justify="left", width=10)
     table.add_column("Created", justify="left", style="dim", width=16)
 
     # Add rows
     for task in tasks:
         status_str = format_status(task.status)
         created_str = task.created_at.strftime("%Y-%m-%d %H:%M")
-        table.add_row(str(task.id), task.title, status_str, created_str)
+        due_date_str = task.format_due_date() if task.due_date else ""
+
+        # Lookup project name if project_id exists
+        project_str = ""
+        if task.project_id and project_manager:
+            project = project_manager.get_project_by_id(task.project_id)
+            if project:
+                project_str = project.name
+
+        if show_project:
+            table.add_row(
+                str(task.id), task.title, status_str, due_date_str, project_str, created_str
+            )
+        else:
+            table.add_row(str(task.id), task.title, status_str, due_date_str, created_str)
 
     console.print(table)
+
+
+def print_project_table(projects: list) -> None:
+    """Display projects in a styled table.
+
+    Args:
+        projects: List of Project objects to display.
+
+    Output:
+        - Styled table with borders
+        - Colored header row (blue)
+        - Task count column
+        - Created timestamp column
+
+    Note:
+        If projects list is empty, displays info message instead.
+    """
+    console = get_console()
+
+    if not projects:
+        print_info("No projects yet. Create one with 'project create'.")
+        return
+
+    table = Table(
+        show_header=True,
+        header_style="header",
+        border_style="dim",
+        row_styles=["", "dim"],
+    )
+
+    # Define columns
+    table.add_column("ID", justify="right", style="dim", width=4)
+    table.add_column("Name", justify="left", width=10)
+    table.add_column("Description", justify="left", width=30, overflow="ellipsis")
+    table.add_column("Tasks", justify="right", width=5)
+    table.add_column("Created", justify="left", style="dim", width=16)
+
+    # Add rows
+    for project in projects:
+        created_str = project.created_at.strftime("%Y-%m-%d %H:%M")
+        description_str = project.description if project.description else ""
+        table.add_row(
+            str(project.id),
+            project.name,
+            description_str,
+            str(project.task_count),
+            created_str,
+        )
+
+    console.print(table)
+
+
+def print_stats_table(stats) -> None:
+    """Display task statistics in a styled table.
+
+    Args:
+        stats: TaskStats object with metrics.
+
+    Output:
+        - Styled table with borders
+        - Colored header row (blue)
+        - Metrics and values displayed
+        - Contextual messages based on stats
+    """
+    console = get_console()
+
+    # Check for zero tasks case
+    if stats.total == 0:
+        print_info("No tasks yet. Add one with 'add'.")
+        return
+
+    table = Table(
+        show_header=True,
+        header_style="header",
+        border_style="dim",
+        show_lines=False,
+    )
+
+    # Define columns
+    table.add_column("Metric", justify="left", width=20)
+    table.add_column("Value", justify="right", width=7)
+
+    # Add rows
+    table.add_row("Total Tasks", str(stats.total))
+    table.add_row("Pending", str(stats.pending))
+    table.add_row("Completed", str(stats.completed))
+    table.add_row("", "")  # Separator row
+    table.add_row("Due Today", str(stats.due_today))
+    table.add_row("Overdue", str(stats.overdue))
+    table.add_row("", "")  # Separator row
+    table.add_row("Completion Rate", f"{stats.completion_rate:.1f}%")
+
+    console.print(table)
+    console.print()
+
+    # Contextual messages
+    if stats.pending == 0 and stats.total > 0:
+        console.print("[success]🎉 Amazing! All tasks completed![/success]")
+        console.print()
+    elif stats.overdue > 0:
+        msg = f"[warning]⚠ You have {stats.overdue} overdue tasks. "
+        msg += "Run 'list --overdue' to see them.[/warning]"
+        console.print(msg)
+        console.print()
 
 
 def get_prompt() -> str:
@@ -364,9 +489,7 @@ def _get_ascii_art(mode: str) -> str:
             return HERO_ART_ASCII
         elif mode == "compact":
             return (
-                "+------------------------+\n"
-                "|   * T O D O  A P P *   |\n"
-                "+------------------------+"
+                "+------------------------+\n|   * T O D O  A P P *   |\n+------------------------+"
             )
         else:
             return HERO_ART_TEXT

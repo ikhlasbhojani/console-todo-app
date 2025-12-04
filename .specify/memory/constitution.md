@@ -1,17 +1,15 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 0.0.0 → 1.0.0 (MAJOR - initial constitution)
-Modified principles: N/A (new document)
-Added sections:
-  - 7 Core Principles (Code Quality, Testing, Spec-Driven Development, Database/Persistence, File/Directory Structure, Review/Refactor, AI Behavior)
-  - Development Workflow section
-  - Governance section with amendment procedures
-Removed sections: N/A
+Version change: 1.0.0 → 1.0.1 (PATCH - database path clarification)
+Modified principles:
+  - IV. Database and Persistence: Updated path from `data/todo.db` to `~/.todo-app/todo.db`
+Added sections: None
+Removed sections: None
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ (Constitution Check section compatible)
-  - .specify/templates/spec-template.md ✅ (User scenarios align with testing rules)
-  - .specify/templates/tasks-template.md ✅ (Task structure compatible)
+  - .specify/templates/plan-template.md ✅ (no changes needed - Constitution Check section compatible)
+  - .specify/templates/spec-template.md ✅ (no changes needed - User scenarios align with testing rules)
+  - .specify/templates/tasks-template.md ✅ (no changes needed - Task structure compatible)
 Follow-up TODOs: None
 ==================
 -->
@@ -60,10 +58,10 @@ All development MUST follow the Spec-Driven Development methodology:
 
 Data persistence rules are non-negotiable:
 
-- **SQLite persistence**: All data MUST persist in SQLite database at `data/todo.db`
+- **SQLite persistence**: All data MUST persist in SQLite database at `~/.todo-app/todo.db`
 - **No in-memory only**: Never use in-memory only storage; always write to disk for data that should persist
 - **Standard library only**: Use Python's built-in `sqlite3` module exclusively (no ORMs like SQLAlchemy)
-- **Directory creation**: Create `data/` directory programmatically if it doesn't exist before database operations
+- **Directory creation**: Create database directory programmatically if it doesn't exist before database operations
 - **SQL injection prevention**: Use parameterized queries for ALL database operations to prevent SQL injection
 
 **Rationale**: Consistent persistence ensures data integrity and keeps the application simple and portable.
@@ -76,7 +74,7 @@ Project organization MUST follow this structure:
 - **Tests**: `tests/` directory for all test files
 - **Specifications**: `specs/` directory for feature specifications
 - **Scripts**: `scripts/` directory for installation and utility scripts
-- **Data**: `data/` directory for database and configuration files
+- **User data**: `~/.todo-app/` directory for database and user configuration files
 
 **Rationale**: Consistent structure enables navigation, tooling configuration, and team onboarding.
 
@@ -140,4 +138,4 @@ The standard development workflow for this project:
 
 For runtime development guidance specific to AI assistants, see `CLAUDE.md` in the project root.
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-04 | **Last Amended**: 2025-12-04
+**Version**: 1.0.1 | **Ratified**: 2025-12-04 | **Last Amended**: 2025-12-05

@@ -4,6 +4,9 @@ This module provides helper functions for validating user input
 and formatting task data for display.
 """
 
+import re
+from datetime import date
+
 from src.models import Task
 
 
@@ -110,3 +113,67 @@ def format_task_table(tasks: list[Task]) -> str:
     # Combine all parts
     table_lines = [header, separator] + rows
     return "\n".join(table_lines)
+
+
+def validate_due_date(date_str: str) -> tuple[bool, date | None | str]:
+    """Validate and parse a due date string.
+
+    Args:
+        date_str: User input string in YYYY-MM-DD format, or empty string.
+
+    Returns:
+        Tuple of (success, result) where:
+        - (True, date) if valid date
+        - (True, None) if empty string (no due date)
+        - (False, error_message) if invalid format
+
+    Example:
+        >>> validate_due_date("2025-12-25")
+        (True, date(2025, 12, 25))
+        >>> validate_due_date("")
+        (True, None)
+        >>> validate_due_date("12-25-2025")
+        (False, "Invalid date format. Use YYYY-MM-DD")
+    """
+    stripped = date_str.strip()
+    if not stripped:
+        return (True, None)
+
+    try:
+        parsed_date = date.fromisoformat(stripped)
+        return (True, parsed_date)
+    except ValueError:
+        return (False, "Invalid date format. Use YYYY-MM-DD")
+
+
+def validate_project_name(name: str) -> tuple[bool, str]:
+    """Validate a project name.
+
+    Project names must be alphanumeric with underscores only.
+
+    Args:
+        name: User input string to validate as project name.
+
+    Returns:
+        Tuple of (success, result) where:
+        - (True, stripped_name) if valid
+        - (False, error_message) if invalid
+
+    Example:
+        >>> validate_project_name("work_projects")
+        (True, "work_projects")
+        >>> validate_project_name("my-project")
+        (False, "Project name must be alphanumeric (underscores allowed).")
+        >>> validate_project_name("")
+        (False, "Project name cannot be empty.")
+    """
+    stripped = name.strip()
+
+    if not stripped:
+        return (False, "Project name cannot be empty.")
+
+    # Check alphanumeric with underscores only
+    if not re.match(r"^[a-zA-Z0-9_]+$", stripped):
+        return (False, "Project name must be alphanumeric (underscores allowed).")
+
+    return (True, stripped)

@@ -10,7 +10,7 @@ from src.main import handle_help
 
 
 def test_help_displays_all_commands(capsys):
-    """Test that handle_help displays all 6 available commands.
+    """Test that handle_help displays all available commands.
 
     Arrange: No setup needed
     Act: Call handle_help()
@@ -58,7 +58,7 @@ def test_help_output_format(capsys):
     lines = output.strip().split("\n")
     command_lines = [line for line in lines if " - " in line]
 
-    assert len(command_lines) == 7, "Should have exactly 7 command lines"
+    assert len(command_lines) == 16, "Should have exactly 16 command lines"
 
     # Each command line should contain ' - ' for description
     for line in command_lines:
@@ -272,11 +272,11 @@ def test_help_contains_no_task_operations():
 
 
 def test_help_command_count():
-    """Test that handle_help displays exactly 6 commands.
+    """Test that handle_help displays exactly 16 commands.
 
     Arrange: No setup needed
     Act: Call handle_help and count command entries
-    Assert: Exactly 6 commands are displayed
+    Assert: Exactly 16 commands are displayed
     """
     # Arrange
     import io
@@ -292,7 +292,7 @@ def test_help_command_count():
 
     # Assert - Count lines with command descriptions (contain " - ")
     command_lines = [line for line in output.split("\n") if " - " in line]
-    assert len(command_lines) == 7, f"Expected exactly 7 commands, found {len(command_lines)}"
+    assert len(command_lines) == 16, f"Expected exactly 16 commands, found {len(command_lines)}"
 
 
 def test_unknown_command_error_format_consistency():
